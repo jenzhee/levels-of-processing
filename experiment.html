@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Levels of Processing Experiment</title>
+    <script src="jspsych/jspsych.js"></script>
+    <script src="jspsych/plugin-html-keyboard-response.js"></script>
+    <script src="jspsych/plugin-preload.js"></script>
+    <script src="jspsych/plugin-survey-text.js"></script> 
+    <script src="jspsych/plugin-image-keyboard-response.js"></script>
+    <link href="jspsych/jspsych.css" rel="stylesheet" type="text/css" />
+
+    <style>
+    body { background: #f5f5f5; }
+    .jspsych-display-element { font-family: Georgia, serif; }
+    .prompt-text {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #222;
+    }
+    .key-hint {
+      font-size: 16px;
+      color: #666;
+      margin-top: 10px;
+    }
+    .results-table {
+      border-collapse: collapse;
+      margin: 20px auto;
+      font-size: 18px;
+    }
+    .results-table td, .results-table th {
+      border: 1px solid #ccc;
+      padding: 10px 20px;
+    }
+    .results-table th { background: #ddd; }
+
+
+  </style>
+  </head>
+  <body></body>
+  <script>
+
+// Your 40 study images (filename only; place files in images/ folder)
+// First 20 → shallow condition, last 20 → deep condition
+// (they will be randomly assigned below)
+const STUDY_IMAGES = [
+  "apple.png", "axe.png", "ball.png", "bowl.png", "bag.png", "boot.png", 
+  "leaf.png", "mountain.png", "pan.png", "pencil.png", "sandwich.png",
+  "watch.png", "tie.png", "shoe.png", "orange.png", "clock.png", "tree.png",
+  "boat.png", "couch.png", "comb.png"
+];
+
+const DISTRACTOR_IMAGES = [
+  "bicycle.png", "bread.png", "balloon.png", "cup.png", "flower.png", 
+  "guitar.png", "hat.png", "pen.png", "pot.png", "pig.png", "plane.png", 
+  "toothbrush.png", "spoon.png", "paintbrush.png", "giraffe.png", "candle.png", 
+  "sun.png", "nail.png", "moon.png", "key.png"
+];
+
+const IMAGE_FOLDER = "images/";
+const STUDY_TIME = 2000;   // ms each study image is shown
+const FIXATION_TIME = 500; // ms fixation cross between trials
+
+// Shallow prompts (perceptual)
+const SHALLOW_PROMPTS = [
+  "Is this image in portrait orientation?",
+  "Does this object have any straight edges?",
+  "Is this object mostly one color?"
+];
+
+// Deep prompts (semantic)
+const DEEP_PROMPTS = [
+  "Would you find this object useful on a camping trip?",
+  "Would you use this object at least once a week?",
+  "Can this object be found in a school?"
+];
+
+const jsPsych = initJsPsych({
+  on_finish: function() {
+    showResults();
+  }
+});
+
+// Counterbalancing: randomly assign participant to group A or B
+const counterbalanceGroup = Math.random() < 0.5 ? 'A' : 'B';
+
+// Split images into two fixed sets
+const setA = STUDY_IMAGES.slice(0, 10);
+const setB = STUDY_IMAGES.slice(10, 20);
+
+// Group A: setA = shallow, setB = deep
+// Group B: setA = deep, setB = shallow
+const shallowImages = counterbalanceGroup === 'A' ? setA : setB;
+const deepImages    = counterbalanceGroup === 'A' ? setB : setA;
+
+// Save group to data so you can check it in your CSV
+jsPsych.data.addProperties({ counterbalance_group: counterbalanceGroup });
+
+const timeline = [];
+
+//preload images
+timeline.push({
+  type: jsPsychPreload,
+  images: [
+    ...STUDY_IMAGES.map(f => IMAGE_FOLDER + f),
+    ...DISTRACTOR_IMAGES.map(f => IMAGE_FOLDER + f)
+  ]
+});
+
+// --- Welcome screen ---
+timeline.push({
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `
+    <h2>Welcome</h2>
+    <p>You will see a series of images, one at a time.</p>
+    <p>For each image, answer the question shown using:</p>
+    <p><strong>F = Yes &nbsp;&nbsp;&nbsp; J = No</strong></p>
+    <p>Please respond as <em>quickly and accurately</em> as possible.</p>
+    <br>
+    <p style="color:#888">Press any key to begin.</p>
+  `,
+  choices: "ALL_KEYS"
+});
+
+function makeFixation() {
+  return {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: '<p style="font-size:48px">+</p>',
+    choices: "NO_KEYS",
+    trial_duration: FIXATION_TIME
+  };
+}
+
+function makeStudyTrial(imageFile, condition) {
+  const prompts = condition === 'shallow' ? SHALLOW_PROMPTS : DEEP_PROMPTS;
+  const prompt  = prompts[Math.floor(Math.random() * prompts.length)];
+
+  return {
+    type: jsPsychImageKeyboardResponse,
+    stimulus: IMAGE_FOLDER + imageFile,
+    stimulus_height: 280,
+    stimulus_width: null,
+    maintain_aspect_ratio: true,
+    choices: ['f', 'j'],
+    trial_duration: STUDY_TIME + 3000, // max time; trial ends on keypress
+    prompt: `
+      <p class="prompt-text">${prompt}</p>
+      <p class="key-hint"><strong>F</strong> = Yes &nbsp;&nbsp;&nbsp; <strong>J</strong> = No</p>
+    `,
+    data: {
+      phase: 'study',
+      condition: condition,
+      image_name: imageFile,
+      prompt: prompt
+    }
+  };
+}
+
+let studyTrials = [];
+shallowImages.forEach(img => studyTrials.push(makeStudyTrial(img, 'shallow')));
+deepImages.forEach(img    => studyTrials.push(makeStudyTrial(img, 'deep')));
+studyTrials = jsPsych.randomization.shuffle(studyTrials);
+
+// Insert fixation before each study trial
+studyTrials.forEach(trial => {
+  timeline.push(makeFixation());
+  timeline.push(trial);
+});
+
+// Math problems filler
+const mathProblems = [
+  "What is 47 + 36?",
+  "What is 83 - 12?",
+  "What is 13 + 49?",
+  "What is 90 - 47?",
+  "What is 23 + 28?"
+];
+
+mathProblems.forEach(question => {
+  timeline.push({
+    type: jsPsychSurveyText,
+    questions: [
+      {
+        prompt: `<p style="font-size:24px"><strong>${question}</strong></p>
+                 <p style="font-size:16px; color:#888">Type your answer and click Continue.</p>`,
+        name: 'math_answer',
+        required: true
+      }
+    ],
+    data: {
+      phase: 'filler',
+      question: question
+    }
+  });
+});
+
+timeline.push({
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `
+    <h2>Memory Test</h2>
+    <p>You will now see images one at a time.</p>
+    <p>Some were shown earlier. Some are <em>new</em>.</p>
+    <p><strong>F = Yes, I saw this earlier &nbsp;&nbsp; J = No, this is new</strong></p>
+    <br>
+    <p style="color:#888">Press any key to start the memory test.</p>
+  `,
+  choices: "ALL_KEYS"
+});
+
+
+function makeTestTrial(imageFile, isOld, studyCondition = null) {
+  return {
+    type: jsPsychImageKeyboardResponse,
+    stimulus: IMAGE_FOLDER + imageFile,
+    stimulus_height: 280,
+    stimulus_width: null,
+    maintain_aspect_ratio: true,
+    choices: ['f', 'j'],
+    prompt: `
+      <p class="prompt-text">Did you see this image earlier?</p>
+      <p class="key-hint"><strong>F</strong> = Yes &nbsp;&nbsp;&nbsp; <strong>J</strong> = No</p>
+    `,
+    data: {
+      phase: 'test',
+      image_name: imageFile,
+      old_new: isOld ? 'old' : 'new',
+      study_condition: studyCondition  // 'shallow', 'deep', or null
+    },
+    on_finish: function(data) {
+      // Correct = F (yes) for old items, J (no) for new items
+      data.correct = (isOld && data.response === 'f') ||
+                     (!isOld && data.response === 'j');
+    }
+  };
+}
+
+let testTrials = [];
+
+// Add old items (20 shallow + 20 deep)
+shallowImages.forEach(img => testTrials.push(makeTestTrial(img, true, 'shallow')));
+deepImages.forEach(img    => testTrials.push(makeTestTrial(img, true, 'deep')));
+
+// Add 40 new distractor items
+DISTRACTOR_IMAGES.forEach(img => testTrials.push(makeTestTrial(img, false)));
+
+//shuffle test order
+testTrials = jsPsych.randomization.shuffle(testTrials);
+
+testTrials.forEach(trial => {
+  timeline.push(makeFixation());
+  timeline.push(trial);
+});
+
+jsPsych.run(timeline);
+
+function showResults() {
+  const testData = jsPsych.data.get().filter({ phase: 'test', old_new: 'old' }).values();
+
+  const shallow = testData.filter(d => d.study_condition === 'shallow');
+  const deep    = testData.filter(d => d.study_condition === 'deep');
+
+  const shallowAcc = (shallow.filter(d => d.correct).length / shallow.length * 100).toFixed(1);
+  const deepAcc    = (deep.filter(d => d.correct).length    / deep.length    * 100).toFixed(1);
+
+  const shallowRT = (shallow.reduce((s,d) => s + d.rt, 0) / shallow.length).toFixed(0);
+  const deepRT    = (deep.reduce((s,d) => s + d.rt, 0)    / deep.length).toFixed(0);
+
+  const group = jsPsych.data.get().values()[0].counterbalance_group;
+
+  fetch('https://sheetdb.io/api/v1/hfwumx9f8y2jh', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      data: [{
+        shallow_acc: shallowAcc,
+        deep_acc: deepAcc,
+        shallow_rt: shallowRT,
+        deep_rt: deepRT,
+        counterbalance_group: group,
+        timestamp: new Date().toISOString()
+      }]
+    })
+  });
+
+  document.querySelector('.jspsych-display-element').innerHTML = `
+    <div style="text-align:center; margin-top:120px; font-family:Georgia,serif;">
+      <h2>Experiment Complete</h2>
+      <p>Thank you for participating!</p>
+      <p>Your results have been recorded.</p>
+      <p>You may now close this tab.</p>
+    </div>
+  `;
+}
+
+function downloadData() {
+  jsPsych.data.get().localSave('csv', 'levels_of_processing_data.csv');
+}
+
+</script>
+</html>
