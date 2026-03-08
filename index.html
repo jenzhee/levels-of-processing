@@ -46,16 +46,23 @@ const STUDY_IMAGES = [
   "axe.png", "ball.png", "bowl.png", "bag.png", "boot.png", 
   "leaf.png", "mountain.png", "pan.png", "pencil.png", "sandwich.png",
   "sun.png", "tie.png", "shoe.png", "orange.png", "clock.png", "beret.png",
-  "boat.png", "couch.png", "comb.png", "bottle.png"
+  "boat.png", "couch.png", "comb.png", "bottle.png", "fence.png", "button.png",
+  "bat.png", "brush.png", "glove.png", "lightbulb.png", "switch.png", "lock.png",
+  "football.png", "glasses.png", "rockingchair.png", "buttondown.png", "table.png",
+  "needle.png", "wheel.png", "screw.png", "necklace.png", "box.png", "desk.png",
+  "knob.png"
 ];
 
 const DISTRACTOR_IMAGES = [
   "cup.png", "bread.png", "balloon.png", "apple.png", "flower.png", 
   "guitar.png", "hat.png", "pen.png", "pot.png", "broom.png", "tree.png", 
   "toothbrush.png", "spoon.png", "paintbrush.png", "book.png", "candle.png", 
-  "watch.png", "nail.png", "moon.png", "key.png"
+  "watch.png", "nail.png", "moon.png", "key.png", "chair.png", "basket.png", 
+  "belt.png", "fork.png", "mug.png", "mitten.png", "lamp.png", "hammer.png",
+  "helmet.png", "helicopter.png", "sweater.png", "stool.png", "ruler.png",
+  "tv.png", "umbrella.png", "knife.png", "trashcan.png", "bell.png", "dresser.png",
+  "door.png"
 ];
-
 const IMAGE_FOLDER = "images/";
 const STUDY_TIME = 2000;   // ms each study image is shown
 const FIXATION_TIME = 500; // ms fixation cross between trials
@@ -71,7 +78,7 @@ const SHALLOW_PROMPTS = [
 const DEEP_PROMPTS = [
   "Would you find this object useful on a camping trip?",
   "Would you use this object at least once a week?",
-  "Can this object be found in a school?"
+  "Can this object be found inside a school?"
 ];
 
 const jsPsych = initJsPsych({
@@ -84,8 +91,9 @@ const jsPsych = initJsPsych({
 const counterbalanceGroup = Math.random() < 0.5 ? 'A' : 'B';
 
 // Split images into two fixed sets
-const setA = STUDY_IMAGES.slice(0, 10);
-const setB = STUDY_IMAGES.slice(10, 20);
+const half = Math.floor(STUDY_IMAGES.length / 2);
+const setA = STUDY_IMAGES.slice(0, half);
+const setB = STUDY_IMAGES.slice(half);
 
 // Group A: setA = shallow, setB = deep
 // Group B: setA = deep, setB = shallow
@@ -181,7 +189,7 @@ mathProblems.forEach(question => {
     questions: [
       {
         prompt: `<p style="font-size:24px"><strong>${question}</strong></p>
-                 <p style="font-size:16px; color:#888">Type your answer and click Continue.</p>`,
+                 <p style="font-size:16px; color:#888">Type your answer and press Enter or click Continue.</p>`,
         name: 'math_answer',
         required: true
       }
@@ -191,6 +199,13 @@ mathProblems.forEach(question => {
       question: question
     }
   });
+});
+
+timeline.push({
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `<p>Get ready for the memory test...</p>`,
+  choices: "NO_KEYS",
+  trial_duration: 10000  // 10 second forced wait after math
 });
 
 timeline.push({
@@ -289,10 +304,6 @@ function showResults() {
       <p>You may now close this tab.</p>
     </div>
   `;
-}
-
-function downloadData() {
-  jsPsych.data.get().localSave('csv', 'levels_of_processing_data.csv');
 }
 
 </script>
