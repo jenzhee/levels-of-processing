@@ -39,9 +39,7 @@
   <body></body>
   <script>
 
-// Your 40 study images (filename only; place files in images/ folder)
-// First 20 → shallow condition, last 20 → deep condition
-// (they will be randomly assigned below)
+// First 20 are shallow, last 20 are deep (they will be randomly assigned)
 const STUDY_IMAGES = [
   "axe.png", "ball.png", "bowl.png", "bag.png", "boot.png", 
   "leaf.png", "mountain.png", "pan.png", "pencil.png", "sandwich.png",
@@ -67,14 +65,12 @@ const IMAGE_FOLDER = "images/";
 const STUDY_TIME = 2000;   // ms each study image is shown
 const FIXATION_TIME = 500; // ms fixation cross between trials
 
-// Shallow prompts (perceptual)
 const SHALLOW_PROMPTS = [
   "Is this image in portrait orientation?",
   "Does this object have any straight edges?",
   "Is this object mostly one color?"
 ];
 
-// Deep prompts (semantic)
 const DEEP_PROMPTS = [
   "Would you find this object useful on a camping trip?",
   "Would you use this object at least once a week?",
@@ -87,20 +83,16 @@ const jsPsych = initJsPsych({
   }
 });
 
-// Counterbalancing: randomly assign participant to group A or B
+// randomly assign participant to group A or B
 const counterbalanceGroup = Math.random() < 0.5 ? 'A' : 'B';
 
-// Split images into two fixed sets
 const half = Math.floor(STUDY_IMAGES.length / 2);
-const setA = STUDY_IMAGES.slice(0, half);
-const setB = STUDY_IMAGES.slice(half);
+const setA = STUDY_IMAGES.slice(0, half); // setA = shallow, setB = deep
+const setB = STUDY_IMAGES.slice(half); // setA = deep, setB = shallow
 
-// Group A: setA = shallow, setB = deep
-// Group B: setA = deep, setB = shallow
 const shallowImages = counterbalanceGroup === 'A' ? setA : setB;
 const deepImages    = counterbalanceGroup === 'A' ? setB : setA;
 
-// Save group to data so you can check it in your CSV
 jsPsych.data.addProperties({ counterbalance_group: counterbalanceGroup });
 
 const timeline = [];
@@ -114,7 +106,6 @@ timeline.push({
   ]
 });
 
-// --- Welcome screen ---
 timeline.push({
   type: jsPsychHtmlKeyboardResponse,
   stimulus: `
@@ -149,7 +140,7 @@ function makeStudyTrial(imageFile, condition) {
     stimulus_width: null,
     maintain_aspect_ratio: true,
     choices: ['f', 'j'],
-    trial_duration: STUDY_TIME + 3000, // max time; trial ends on keypress
+    trial_duration: STUDY_TIME + 3000, // max time
     prompt: `
       <p class="prompt-text">${prompt}</p>
       <p class="key-hint"><strong>F</strong> = Yes &nbsp;&nbsp;&nbsp; <strong>J</strong> = No</p>
@@ -168,13 +159,11 @@ shallowImages.forEach(img => studyTrials.push(makeStudyTrial(img, 'shallow')));
 deepImages.forEach(img    => studyTrials.push(makeStudyTrial(img, 'deep')));
 studyTrials = jsPsych.randomization.shuffle(studyTrials);
 
-// Insert fixation before each study trial
 studyTrials.forEach(trial => {
   timeline.push(makeFixation());
   timeline.push(trial);
 });
 
-// Math problems filler
 const mathProblems = [
   "What is 47 + 36?",
   "What is 83 - 12?",
@@ -238,10 +227,9 @@ function makeTestTrial(imageFile, isOld, studyCondition = null) {
       phase: 'test',
       image_name: imageFile,
       old_new: isOld ? 'old' : 'new',
-      study_condition: studyCondition  // 'shallow', 'deep', or null
+      study_condition: studyCondition
     },
     on_finish: function(data) {
-      // Correct = F (yes) for old items, J (no) for new items
       data.correct = (isOld && data.response === 'f') ||
                      (!isOld && data.response === 'j');
     }
@@ -250,14 +238,10 @@ function makeTestTrial(imageFile, isOld, studyCondition = null) {
 
 let testTrials = [];
 
-// Add old items (20 shallow + 20 deep)
 shallowImages.forEach(img => testTrials.push(makeTestTrial(img, true, 'shallow')));
 deepImages.forEach(img    => testTrials.push(makeTestTrial(img, true, 'deep')));
 
-// Add 40 new distractor items
 DISTRACTOR_IMAGES.forEach(img => testTrials.push(makeTestTrial(img, false)));
-
-//shuffle test order
 testTrials = jsPsych.randomization.shuffle(testTrials);
 
 testTrials.forEach(trial => {
